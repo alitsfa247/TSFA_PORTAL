@@ -5819,13 +5819,31 @@
     async function captureUltraHdCardCanvas() {
       const target = document.querySelector("#resultCardPrintArea .inst-card-sheet") || document.querySelector("#resultCardPrintArea .rc-sheet");
       if (!target || !window.html2canvas) return null;
+      const isLandscape = target.classList.contains("rc-sheet") && !target.classList.contains("inst-card-sheet");
+      const fixedW = isLandscape ? 1122 : 794;
       target.classList.add("h2c-exporting");
       try {
         const canvas = await window.html2canvas(target, {
-          scale: 3,
+          scale: 2.5,
           useCORS: true,
           logging: false,
-          backgroundColor: "#ffffff"
+          backgroundColor: "#ffffff",
+          windowWidth: fixedW + 120,
+          width: fixedW,
+          onclone: function(clonedDoc) {
+            const clonedTarget = clonedDoc.querySelector("#resultCardPrintArea .inst-card-sheet") || clonedDoc.querySelector("#resultCardPrintArea .rc-sheet");
+            if (clonedTarget) {
+              clonedTarget.style.width = fixedW + "px";
+              clonedTarget.style.minWidth = fixedW + "px";
+              clonedTarget.style.maxWidth = fixedW + "px";
+              clonedTarget.style.margin = "0";
+              clonedTarget.style.boxSizing = "border-box";
+              clonedTarget.style.overflow = "visible";
+              const fixStyle = clonedDoc.createElement("style");
+              fixStyle.textContent = "#resultCardPrintArea, #resultCardPrintArea * { letter-spacing: 0 !important; word-spacing: normal !important; } #resultCardPrintArea .urdu-text, #resultCardPrintArea [dir='rtl'] { letter-spacing: 0 !important; line-height: 1.85 !important; }";
+              clonedDoc.head.appendChild(fixStyle);
+            }
+          }
         });
         target.classList.remove("h2c-exporting");
         return canvas;
@@ -5999,24 +6017,51 @@
     }
 
     async function attachAndShareWaPdfDirectly() {
-      const stuId = document.getElementById("rcStudentSelect")?.value;
-      const stu = STATE.students.find(s => s.id === stuId) || STATE.students.find(s => s.classId === STATE.activeClass);
-      const msg = buildStudentWhatsAppSummaryText(stu);
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 
-      if (window.CURRENT_WA_PDF_FILE && navigator.canShare && navigator.canShare({ files: [window.CURRENT_WA_PDF_FILE] })) {
+      // 1. Primary: Direct Android/iOS Native Share Sheet with PDF File ONLY (no long text/clipboard/popup interference)
+      if (window.CURRENT_WA_PDF_FILE && typeof navigator.share === "function") {
+        const pdfPayload = {
+          files: [window.CURRENT_WA_PDF_FILE],
+          title: window.CURRENT_WA_PDF_FILENAME || "TSFA_Result_Card.pdf"
+        };
+        const canSharePdf = !navigator.canShare || navigator.canShare({ files: [window.CURRENT_WA_PDF_FILE] });
+        if (canSharePdf) {
+          try {
+            await navigator.share(pdfPayload);
+            showToast("✅ Result Card PDF shared via WhatsApp Share Sheet!", "✅");
+            return;
+          } catch (err) {
+            if (err && err.name === "AbortError") return;
+          }
+        }
+      }
+
+      // 2. Mobile Fallback: Direct Native Share Sheet with Crisp A4 PNG File (100% supported on all Android WhatsApp builds)
+      if (window.CURRENT_WA_PNG_BLOB && typeof navigator.share === "function") {
         try {
-          await navigator.share({
-            files: [window.CURRENT_WA_PDF_FILE],
-            title: window.CURRENT_WA_PDF_FILENAME || "Result_Card.pdf",
-            text: msg
-          });
-          showToast("Shared Result Card PDF directly via Share Sheet!", "✅");
-          return;
+          const pngName = (window.CURRENT_WA_PDF_FILENAME || "TSFA_Result_Card.pdf").replace(/\.pdf$/i, ".png");
+          const pngFile = new File([window.CURRENT_WA_PNG_BLOB], pngName, { type: "image/png" });
+          if (!navigator.canShare || navigator.canShare({ files: [pngFile] })) {
+            await navigator.share({ files: [pngFile], title: pngName });
+            showToast("✅ Result Card A4 Image shared via WhatsApp Share Sheet!", "✅");
+            return;
+          }
         } catch (err) {
           if (err && err.name === "AbortError") return;
         }
       }
 
+      // 3. On Mobile: Never trigger blocked clipboard/popup — trigger clean direct PDF download instead
+      if (isMobileDevice) {
+        if (typeof downloadCurrentWaPdf === "function") {
+          downloadCurrentWaPdf();
+        }
+        showToast("📥 PDF downloaded to phone! Open WhatsApp and attach from Downloads.", "📥");
+        return;
+      }
+
+      // 4. Desktop PC fallback: Copy PNG to clipboard & open WhatsApp Web
       if (window.CURRENT_WA_PNG_BLOB && navigator.clipboard && window.ClipboardItem) {
         try {
           await navigator.clipboard.write([new ClipboardItem({ "image/png": window.CURRENT_WA_PNG_BLOB })]);
