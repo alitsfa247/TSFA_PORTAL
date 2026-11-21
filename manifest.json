@@ -1,15 +1,24 @@
 {
   "id": "/TSFA_PORTAL/",
-  "name": "Test Management Portal \u2014 The Scholar's Feat Academy",
+  "name": "Test Management Portal — The Scholar's Feat Academy",
   "short_name": "TSFA Portal",
   "description": "Official Grand Test Session, Marks Entry, Class Gazette & Result Card Management Portal for The Scholar's Feat Academy, Faisalabad.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
   "background_color": "#0d233a",
   "theme_color": "#0d233a",
   "orientation": "any",
   "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "categories": [
     "education",
     "productivity"
@@ -40,14 +49,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "TSFA Test Management Portal \u2014 Desktop View"
+      "label": "TSFA Test Management Portal — Desktop View"
     },
     {
       "src": "screenshot-mobile.png",
       "sizes": "540x960",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "TSFA Test Management Portal \u2014 Mobile View"
+      "label": "TSFA Test Management Portal — Mobile View"
     }
   ]
 }
