@@ -2154,7 +2154,7 @@
   </style>
   <style id="dynamicPrintPageStyle">@page { size: A4 landscape; margin: 4mm; }</style>
   <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="logo.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -13026,6 +13026,44 @@
       window.open(url, "_blank", "noopener,noreferrer");
     }
 
+
+
+    // PWA Capabilities Runtime: Shortcut Hash Router & Real .json Backup File Handler (launchQueue)
+    window.addEventListener("DOMContentLoaded", function() {
+      const h = (window.location.hash || "").replace("#", "").toLowerCase();
+      if (h && typeof switchMainTab === "function") {
+        const map = { master: "master", marks: "master", gazette: "gazette", resultcard: "resultcard", settings: "settings" };
+        if (map[h]) setTimeout(function() { switchMainTab(map[h]); }, 350);
+      }
+
+      if ("launchQueue" in window && typeof window.launchQueue.setConsumer === "function") {
+        window.launchQueue.setConsumer(async function(launchParams) {
+          if (!launchParams || !launchParams.files || !launchParams.files.length) return;
+          try {
+            const handle = launchParams.files[0];
+            const file = await handle.getFile();
+            const text = await file.text();
+            let parsed = JSON.parse(text);
+            if (parsed && parsed.tsfaEncrypted === "AES-256-GCM" && window.crypto && window.crypto.subtle && typeof tsfaDecryptPayload === "function") {
+              const sec = (STATE.authConfig && STATE.authConfig.password) ? STATE.authConfig.password : "Demo@123";
+              const dec = await tsfaDecryptPayload(text, sec);
+              parsed = JSON.parse(dec);
+            }
+            if (parsed && Array.isArray(parsed.students) && parsed.subjectsByClass) {
+              STATE.subjectsByClass = parsed.subjectsByClass;
+              STATE.gradingScale = parsed.gradingScale || STATE.gradingScale;
+              STATE.students = parsed.students;
+              if (parsed.activeSchedule) STATE.activeSchedule = parsed.activeSchedule;
+              refreshAllViews();
+              saveStateToStorage();
+              showToast(`📂 Opened & Restored Backup (${STATE.students.length} students) from ${file.name}!`, "✅");
+            }
+          } catch (err) {
+            showToast("⚠️ Could not read opened .json backup file.", "⚠️");
+          }
+        });
+      }
+    });
 
 </script>
 
