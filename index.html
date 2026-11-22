@@ -2153,6 +2153,50 @@
 
   </style>
   <style id="dynamicPrintPageStyle">@page { size: A4 landscape; margin: 4mm; }</style>
+
+  <style id="tsfaV10UiPolishStyle">
+    /* V10 Sophisticated Non-Destructive UI Polish (Zero Layout Breakage) */
+    .themed-card {
+      box-shadow: 0 4px 18px -2px rgba(13, 35, 58, 0.07), 0 1px 4px rgba(13, 35, 58, 0.04) !important;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .themed-card:hover {
+      box-shadow: 0 8px 24px -4px rgba(13, 35, 58, 0.11), 0 2px 6px rgba(13, 35, 58, 0.05) !important;
+    }
+    #section-master thead th, #section-gazette thead th {
+      position: sticky;
+      top: 0;
+      z-index: 12;
+      box-shadow: 0 2px 4px rgba(13, 35, 58, 0.12);
+    }
+    #section-master tbody tr:hover, #section-gazette tbody tr:hover {
+      background-color: rgba(241, 245, 249, 0.88) !important;
+    }
+    /* Mobile Bottom Navigation Bar padding & active styling */
+    @media (max-width: 767px) {
+      body { padding-bottom: 68px !important; }
+    }
+    .tsfa-mob-nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      flex: 1;
+      padding: 6px 2px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      border-top: 2.5px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .tsfa-mob-nav-btn.mob-active {
+      color: #0d233a;
+      border-top-color: #d97706;
+      background: linear-gradient(180deg, rgba(254, 243, 199, 0.45), rgba(255, 255, 255, 0));
+    }
+  </style>
+
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
 </head>
@@ -3269,6 +3313,26 @@
                 <option value="30">30 Seconds (30 سیکنڈ)</option>
                 <option value="60">1 Minute (60 سیکنڈ)</option>
               </select>
+              <div class="mt-2 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="font-extrabold text-slate-700 text-[11px]" for="welcomeDuaModeSelect">🤲 Welcome Dua Mode (دعا کا انتخاب)</label>
+                  <button type="button" onclick="showFloralPunjabiWelcomeBanner()" class="text-[10px] font-black text-emerald-800 hover:underline">▶️ پریویو</button>
+                </div>
+                <select id="welcomeDuaModeSelect" onchange="onWelcomeDuaModeChange(this.value)" class="w-full h-9 border-2 border-emerald-400 rounded-lg px-2 py-1 font-bold text-emerald-950 bg-emerald-50/60 cursor-pointer text-xs">
+                  <option value="auto">🔄 Auto-Rotate (ہر لاگ ان پر نئی دعا — 1 تا 6)</option>
+                  <option value="0">1. علم و محنت میں برکت</option>
+                  <option value="1">2. علمِ نافع اور رزقِ حلال</option>
+                  <option value="2">3. آسانی اور خیر</option>
+                  <option value="3">4. نقصان اور پریشانی سے حفاظت</option>
+                  <option value="4">5. عافیت، صحت اور سکون</option>
+                  <option value="5">6. شاگردوں کی کامیابی</option>
+                  <option value="custom">✍️ Custom Dua (اپنی دعا لکھیں)</option>
+                </select>
+                <div id="welcomeCustomDuaWrap" class="hidden flex items-center gap-1.5">
+                  <input type="text" id="welcomeCustomDuaInput" dir="rtl" placeholder="اپنی پسند کی دعا یہاں لکھیں..." class="flex-1 border border-emerald-400 rounded-lg px-2.5 py-1.5 text-xs font-bold urdu-text bg-white text-slate-900" />
+                  <button type="button" onclick="saveWelcomeCustomDua()" class="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-black text-[11px] shrink-0">💾 Save</button>
+                </div>
+              </div>
             </div>
             <div>
               <label class="block font-extrabold text-slate-700 mb-1 text-[11px]">👁️ Phone Privacy (فون نمبر چھپائیں)</label>
@@ -3526,7 +3590,7 @@
         </div>
 
         <!-- Prayer Line with "آمین!" on the Exact Same Single Line -->
-        <div dir="rtl" class="urdu-text font-extrabold text-white bg-white/10 border border-amber-300/45 rounded-2xl px-4 py-2.5 shadow-inner whitespace-nowrap" style="font-size: clamp(13.5px, 2.05vw, 22px);">
+        <div id="tsfaWelcomeDuaLineText" dir="rtl" class="urdu-text font-extrabold text-white bg-white/10 border border-amber-300/45 rounded-2xl px-4 py-2.5 shadow-inner sm:whitespace-nowrap leading-relaxed" style="font-size: clamp(13.5px, 1.95vw, 21px);">
           🌺 ”اللّٰہ پاک تہاڈے علم تے محنت وچ برکتاں پائے۔ <span class="text-amber-300 font-black">آمین!</span>“ 🌺
         </div>
 
@@ -13110,6 +13174,110 @@
       }
     });
 
+
+
+    // =========================================================================
+    // V10 UPGRADE: 6 ROTATING PUNJABI/URDU WELCOME DUAS + MOBILE BOTTOM NAV SYNC
+    // =========================================================================
+    const TSFA_WELCOME_DUAS_LIST = [
+      { id: 0, label: "علم و محنت میں برکت", text: "اللّٰہ پاک تہاڈے علم تے محنت وچ برکتاں پائے۔" },
+      { id: 1, label: "علمِ نافع اور رزقِ حلال", text: "یا اللّٰہ! سانوں نفع دین والا علم، پاکیزہ رزق تے قبول ہون والے عمل عطا فرما۔" },
+      { id: 2, label: "آسانی اور خیر", text: "یا اللّٰہ! ساڈے ہر کم وچ آسانی فرما، مشکل نوں آسان کر تے خیر نال مکمل فرما۔" },
+      { id: 3, label: "نقصان اور پریشانی سے حفاظت", text: "یا اللّٰہ! سانوں، ساڈے شاگرداں تے اکیڈمی نوں ہر نقصان، حسد تے پریشانی توں محفوظ رکھ۔" },
+      { id: 4, label: "عافیت، صحت اور سکون", text: "یا اللّٰہ! سانوں دین، دنیا تے آخرت دی مکمل عافیت، صحت تے دل دا سکون عطا فرما۔" },
+      { id: 5, label: "شاگردوں کی کامیابی", text: "یا اللّٰہ! ساڈے سارے شاگرداں نوں بہترین نمبراں، ادب تے روشن مستقبل نال نواز۔" }
+    ];
+
+    function getWelcomeDuaMode() {
+      try { return localStorage.getItem("TSFA_WELCOME_DUA_MODE_V1") || "auto"; } catch (e) { return "auto"; }
+    }
+
+    function getWelcomeCustomDuaText() {
+      try { return (localStorage.getItem("TSFA_WELCOME_DUA_CUSTOM_V1") || "").trim(); } catch (e) { return ""; }
+    }
+
+    function onWelcomeDuaModeChange(modeVal) {
+      try { localStorage.setItem("TSFA_WELCOME_DUA_MODE_V1", String(modeVal || "auto")); } catch (e) {}
+      const wrap = document.getElementById("welcomeCustomDuaWrap");
+      if (wrap) wrap.classList.toggle("hidden", modeVal !== "custom");
+      showToast(modeVal === "auto" ? "🔄 ہر لاگ ان پر نئی دعا خود بخود بدل کر آئے گی!" : "🤲 منتخب کردہ دعا محفوظ ہو گئی!", "✅");
+    }
+
+    function saveWelcomeCustomDua() {
+      const inp = document.getElementById("welcomeCustomDuaInput");
+      const val = (inp ? inp.value : "").trim();
+      if (!val) {
+        showToast("⚠️ براہ کرم اپنی دعا لکھیں۔", "⚠️");
+        return;
+      }
+      try {
+        localStorage.setItem("TSFA_WELCOME_DUA_CUSTOM_V1", val);
+        localStorage.setItem("TSFA_WELCOME_DUA_MODE_V1", "custom");
+      } catch (e) {}
+      showToast("✅ آپ کی ذاتی دعا محفوظ ہو گئی!", "🤲");
+    }
+
+    window._tsfaDuaRuntimeIdx = 0;
+    function pickNextWelcomeDuaText() {
+      const mode = getWelcomeDuaMode();
+      if (mode === "custom") {
+        const customTxt = getWelcomeCustomDuaText();
+        if (customTxt) return customTxt;
+      }
+      if (/^[0-5]$/.test(mode)) {
+        return TSFA_WELCOME_DUAS_LIST[Number(mode)].text;
+      }
+      // Auto-rotate 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 0
+      let idx = window._tsfaDuaRuntimeIdx;
+      try {
+        const saved = localStorage.getItem("TSFA_WELCOME_DUA_IDX_V1");
+        if (saved !== null && !isNaN(Number(saved))) idx = Number(saved) % TSFA_WELCOME_DUAS_LIST.length;
+      } catch (e) {}
+      const chosen = TSFA_WELCOME_DUAS_LIST[idx % TSFA_WELCOME_DUAS_LIST.length].text;
+      const nextIdx = (idx + 1) % TSFA_WELCOME_DUAS_LIST.length;
+      window._tsfaDuaRuntimeIdx = nextIdx;
+      try { localStorage.setItem("TSFA_WELCOME_DUA_IDX_V1", String(nextIdx)); } catch (e) {}
+      return chosen;
+    }
+
+    const _origShowFloralWelcomeV10 = typeof showFloralPunjabiWelcomeBanner === "function" ? showFloralPunjabiWelcomeBanner : null;
+    showFloralPunjabiWelcomeBanner = function() {
+      const duaEl = document.getElementById("tsfaWelcomeDuaLineText");
+      if (duaEl) {
+        const duaText = pickNextWelcomeDuaText();
+        const hasAmeen = duaText.includes("آمین");
+        duaEl.innerHTML = hasAmeen
+          ? `🌺 ”${escapeHtml(duaText)}“ 🌺`
+          : `🌺 ”${escapeHtml(duaText)} <span class="text-amber-300 font-black">آمین!</span>“ 🌺`;
+      }
+      if (_origShowFloralWelcomeV10) _origShowFloralWelcomeV10();
+    };
+
+    // Sync Mobile Bottom Navigation Bar active highlight whenever switchMainTab runs
+    function updateMobileBottomNavHighlight(tabId) {
+      document.querySelectorAll("#mobileBottomNavBar .tsfa-mob-nav-btn").forEach(btn => {
+        const t = btn.getAttribute("data-mob-tab");
+        btn.classList.toggle("mob-active", t === tabId);
+      });
+    }
+    const _origSwitchMainTabV10 = typeof switchMainTab === "function" ? switchMainTab : null;
+    if (_origSwitchMainTabV10) {
+      switchMainTab = function(tabId) {
+        _origSwitchMainTabV10(tabId);
+        updateMobileBottomNavHighlight(tabId);
+      };
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+      const sel = document.getElementById("welcomeDuaModeSelect");
+      const wrap = document.getElementById("welcomeCustomDuaWrap");
+      const inp = document.getElementById("welcomeCustomDuaInput");
+      const mode = getWelcomeDuaMode();
+      if (sel) sel.value = mode;
+      if (wrap) wrap.classList.toggle("hidden", mode !== "custom");
+      if (inp) inp.value = getWelcomeCustomDuaText();
+    });
+
 </script>
 
   <!-- V6 SECURITY RE-AUTH MODAL TO REVEAL PASSWORD / RECOVERY CODE -->
@@ -13128,6 +13296,26 @@
       </div>
     </div>
   </div>
+
+
+  <!-- V10 MOBILE-ONLY FIXED BOTTOM NAVIGATION BAR (Native Android App Feel) -->
+  <nav id="mobileBottomNavBar" class="no-print md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(13,35,58,0.08)] flex items-stretch justify-around px-1">
+    <button type="button" data-mob-tab="master" onclick="switchMainTab('master')" class="tsfa-mob-nav-btn mob-active">
+      <span class="text-base leading-none">📊</span><span>Marks</span>
+    </button>
+    <button type="button" data-mob-tab="gazette" onclick="switchMainTab('gazette')" class="tsfa-mob-nav-btn">
+      <span class="text-base leading-none">🏆</span><span>Gazette</span>
+    </button>
+    <button type="button" data-mob-tab="resultCard" onclick="switchMainTab('resultCard')" class="tsfa-mob-nav-btn">
+      <span class="text-base leading-none">🎓</span><span>Cards</span>
+    </button>
+    <button type="button" data-mob-tab="schedule" onclick="switchMainTab('schedule')" class="tsfa-mob-nav-btn">
+      <span class="text-base leading-none">📅</span><span>Schedule</span>
+    </button>
+    <button type="button" data-mob-tab="settings" onclick="switchMainTab('settings')" class="tsfa-mob-nav-btn">
+      <span class="text-base leading-none">⚙️</span><span>Settings</span>
+    </button>
+  </nav>
 
 <script>
 if ("serviceWorker" in navigator && window.location.protocol === "https:") {
